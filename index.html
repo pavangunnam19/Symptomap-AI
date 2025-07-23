@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symptomap AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #111827;
+            --card-bg-color: #1F2937;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-color: #F9FAFB;
+            --subtle-text-color: #9CA3AF;
+            --highlight-color-emissive: 0xffee00;
+        }
+        
+        body.male-theme {
+            --primary-color: #3B82F6; /* Blue */
+            --primary-hover-color: #60A5FA;
+        }
+
+        body.female-theme {
+            --primary-color: #8B5CF6; /* Purple */
+            --primary-hover-color: #A78BFA;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column; 
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+            transition: color 0.3s ease;
+        }
+
+        .page-header p {
+            font-size: 1.2rem;
+            color: var(--subtle-text-color);
+            margin-top: 0.5rem;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 350px 1fr 300px;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1600px;
+            height: 80vh; 
+            max-height: 850px;
+        }
+
+        .panel {
+            background: var(--card-bg-color);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .info-panel, .anatomy-panel {
+             overflow-y: auto;
+        }
+
+        .viewer-panel {
+            padding: 0;
+            position: relative;
+            cursor: pointer;
+        }
+
+        #viewer-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        h2, h3 { 
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            color: var(--text-color);
+        }
+        h2 { font-size: 1.8rem; }
+        h3 { font-size: 1.2rem; color: var(--primary-color); transition: color 0.3s ease;}
+
+        .header p, .control-group p {
+            color: var(--subtle-text-color);
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--subtle-text-color);
+        }
+        
+        #ai-explanation {
+            margin-top: 1rem;
+            background: rgba(0,0,0,0.2);
+            padding: 1.5rem;
+            border-radius: 8px;
+            flex-grow: 1;
+        }
+        
+        #ai-explanation h4 { 
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        
+        #ai-explanation p {
+            line-height: 1.6;
+            color: var(--subtle-text-color);
+        }
+
+        .disclaimer {
+            font-size: 0.8rem;
+            font-style: italic;
+            color: var(--subtle-text-color);
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+            margin-top: auto;
+        }
+        
+        .color-picker, .gender-picker {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        
+        .gender-button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background-color: #374151;
+            color: var(--text-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        .gender-button.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-hover-color);
+        }
+        
+        #anatomy-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #anatomy-list li {
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        #anatomy-list li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        #chat-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        #chat-input {
+            flex-grow: 1;
+            background-color: #374151;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+        }
+
+        #chat-submit {
+            padding: 0.5rem 1rem;
+            border: none;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        #about-button {
+            width: 100%;
+            margin-bottom: 1rem;
+            background: none;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            transition: all 0.3s ease;
+        }
+        #about-button:hover {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--card-bg-color); padding: 2rem; border-radius: 16px;
+            border: 1px solid var(--border-color); max-width: 600px; width: 90%;
+            text-align: left; line-height: 1.6;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        .modal-content h2 { margin-top: 0; }
+        .modal-content button { margin-top: 1.5rem; width: 100%; }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .viewer-panel {
+                min-height: 50vh;
+                grid-row: 2;
+            }
+            .anatomy-panel {
+                grid-row: 3;
+            }
+        }
+
+    </style>
+</head>
+<body class="male-theme">
+    <div class="page-header">
+        <h1>Symptomap AI</h1>
+        <p>Developed by Pavan Gunnam</p>
+    </div>
+
+    <div class="main-container">
+        <div class="panel info-panel">
+            <div class="header">
+                <h2>Controls & Info</h2>
+            </div>
+            
+            <div class="control-group">
+                <button id="about-button">About This App</button>
+            </div>
+
+            <div class="control-group">
+                <label for="gender-picker">Select Model:</label>
+                <div class="gender-picker" id="gender-picker">
+                    <button class="gender-button active" data-gender="male">Male</button>
+                    <button class="gender-button" data-gender="female">Female</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="skin-tone-picker">Select Skin Tone:</label>
+                <div class="color-picker" id="skin-tone-picker">
+                    <div class="color-swatch" style="background-color: #F2CCB7;" data-color="0xF2CCB7"></div>
+                    <div class="color-swatch" style="background-color: #D1A388;" data-color="0xD1A388"></div>
+                    <div class="color-swatch" style="background-color: #A07C6B;" data-color="0xA07C6B"></div>
+                    <div class="color-swatch" style="background-color: #8D5524;" data-color="0x8D5524"></div>
+                    <div class="color-swatch" style="background-color: #614336;" data-color="0x614336"></div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>AI Chat</h3>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Ask a specialized question...">
+                    <button type="submit" id="chat-submit">Ask</button>
+                </form>
+            </div>
+
+            <div id="ai-explanation">
+                <h4>AI Explanation</h4>
+                <p id="explanation-text">Hover over or click a body part to learn more.</p>
+            </div>
+            
+            <div class="disclaimer">
+                <p><strong>Disclaimer:</strong> This tool is for informational purposes only and is not a substitute for professional medical advice.</p>
+            </div>
+        </div>
+        <div class="panel viewer-panel">
+            <canvas id="viewer-canvas"></canvas>
+        </div>
+        <div class="panel anatomy-panel">
+            <h2>Anatomy Explorer</h2>
+            <ul id="anatomy-list"></ul>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="about-modal">
+        <div class="modal-content">
+            <h2>About Symptomap AI</h2>
+            <p>Symptomap AI is an interactive, educational tool designed to make learning about human anatomy intuitive and engaging. This application combines a procedurally generated 3D model with a powerful AI to provide detailed information on demand.</p>
+            <h3>Key Features:</h3>
+            <ul>
+                <li><strong>Interactive 3D Model:</strong> Explore a detailed human model built from scratch using Three.js.</li>
+                <li><strong>Dynamic AI Explanations:</strong> Click on any body part or use the chat to get instant, detailed information from Google's Gemini AI.</li>
+                <li><strong>Customizable View:</strong> Switch between male and female models and select from various skin tones.</li>
+            </ul>
+            <p>This project was built entirely with frontend technologies (HTML, CSS, JavaScript) to demonstrate the power of modern web browsers for creating complex, real-time applications.</p>
+            <button id="close-about-modal">Close</button>
+        </div>
+    </div>
+
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+        // --- SCENE SETUP ---
+        let scene, camera, renderer, controls, humanModel, particles, composer, bloomComposer, finalComposer;
+        let raycaster, mouse, INTERSECTED;
+        let bodyParts = [];
+        let materials = {};
+        let isMouseOverCanvas = false;
+
+        // Glow effect layers
+        const DEFAULT_LAYER = 0;
+        const GLOW_LAYER = 1;
+        const darkMaterial = new THREE.MeshBasicMaterial({ color: 'black' });
+
+        function init() {
+            const viewerPanel = document.querySelector('.viewer-panel');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1F2937);
+
+            camera = new THREE.PerspectiveCamera(50, viewerPanel.clientWidth / viewerPanel.clientHeight, 0.1, 1000);
+            camera.position.set(0, 1, 4);
+
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('viewer-canvas'),
+                antialias: true 
+            });
+            renderer.setSize(viewerPanel.clientWidth, viewerPanel.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0, 0.8, 0);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // --- POST-PROCESSING FOR GLOW ---
+            const renderPass = new RenderPass(scene, camera);
+
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(viewerPanel.clientWidth, viewerPanel.clientHeight),
+                1.2, // strength
+                0.8, // radius
+                0.5  // threshold
+            );
+
+            // Composer for the bloom effect
+            bloomComposer = new EffectComposer(renderer);
+            bloomComposer.renderToScreen = false;
+            bloomComposer.addPass(renderPass);
+            bloomComposer.addPass(bloomPass);
+
+            // Composer to blend the normal scene and the bloom scene
+            finalComposer = new EffectComposer(renderer);
+            const finalPass = new ShaderPass(
+                new THREE.ShaderMaterial({
+                    uniforms: {
+                        baseTexture: { value: null },
+                        bloomTexture: { value: bloomComposer.renderTarget2.texture }
+                    },
+                    vertexShader: document.getElementById('vertexshader').textContent,
+                    fragmentShader: document.getElementById('fragmentshader').textContent
+                }), "baseTexture"
+            );
+            finalPass.needsSwap = true;
+            finalComposer.addPass(renderPass);
+            finalComposer.addPass(finalPass);
+
+
+            window.addEventListener('resize', onWindowResize);
+            viewerPanel.addEventListener('mousemove', onMouseMove);
+            viewerPanel.addEventListener('click', onMouseClick);
+            viewerPanel.addEventListener('mouseenter', () => { isMouseOverCanvas = true; });
+            viewerPanel.addEventListener('mouseleave', () => { if(INTERSECTED) INTERSECTED.layers.toggle(GLOW_LAYER); INTERSECTED = null; });
+
+            createParticles();
+            createHumanModel('male');
+            animate();
+        }
+
+        // --- MODEL CREATION (CONDITIONAL) ---
+        function createHumanModel(gender = 'male') {
+            if (humanModel) {
+                scene.remove(humanModel);
+                bodyParts = [];
+            }
+            humanModel = new THREE.Group();
+            humanModel.name = "HumanModel";
+
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0xD1A388,
+                roughness: 0.6,
+                metalness: 0.2,
+                emissive: 0x000000
+            });
+
+            const limbRadius = 0.07;
+
+            // Torso & Hips
+            const torsoGeo = new THREE.CylinderGeometry(gender === 'male' ? 0.25 : 0.22, 0.2, 0.7, 32);
+            const torso = new THREE.Mesh(torsoGeo, material.clone());
+            torso.position.y = 0.8;
+            torso.name = "Torso";
+            humanModel.add(torso);
+            bodyParts.push(torso);
+
+            const hipAreaY = 0.45;
+            
+            const buttockGeo = new THREE.SphereGeometry(gender === 'male' ? 0.16 : 0.17, 32, 16);
+            const leftButtock = new THREE.Mesh(buttockGeo, material.clone());
+            leftButtock.position.set(-0.1, hipAreaY - 0.12, -0.1);
+            leftButtock.scale.set(0.9, 1.1, 0.9);
+            leftButtock.name = "Buttocks";
+            humanModel.add(leftButtock);
+            bodyParts.push(leftButtock);
+
+            const rightButtock = new THREE.Mesh(buttockGeo, material.clone());
+            rightButtock.position.set(0.1, hipAreaY - 0.12, -0.1);
+            rightButtock.scale.set(0.9, 1.1, 0.9);
+            rightButtock.name = "Buttocks";
+            humanModel.add(rightButtock);
+            bodyParts.push(rightButtock);
+
+            // Genitals
+            if (gender === 'male') {
+                const genitalGroup = new THREE.Group();
+                genitalGroup.name = "Penis and Testicles";
+                const penisGeo = new THREE.CapsuleGeometry(0.04, 0.15, 4, 16);
+                const penis = new THREE.Mesh(penisGeo, material.clone());
+                penis.rotation.x = Math.PI / 3; 
+                penis.position.set(0, hipAreaY - 0.1, 0.08); 
+                genitalGroup.add(penis);
+
+                const testicleGeo = new THREE.SphereGeometry(0.05, 16, 8);
+                const leftTesticle = new THREE.Mesh(testicleGeo, material.clone());
+                leftTesticle.position.set(-0.04, hipAreaY - 0.18, 0);
+                genitalGroup.add(leftTesticle);
+                const rightTesticle = new THREE.Mesh(testicleGeo, material.clone());
+                rightTesticle.position.set(0.04, hipAreaY - 0.18, 0);
+                genitalGroup.add(rightTesticle);
+                
+                humanModel.add(genitalGroup);
+                bodyParts.push(genitalGroup);
+            } else { // female
+                const vulvaGeo = new THREE.SphereGeometry(0.08, 16, 8);
+                const vulva = new THREE.Mesh(vulvaGeo, material.clone());
+                vulva.position.y = hipAreaY - 0.05;
+                vulva.scale.set(1, 0.5, 0.5);
+                vulva.name = "Vagina";
+                humanModel.add(vulva);
+                bodyParts.push(vulva);
+            }
+            
+            // Chest (for female model)
+            if (gender === 'female') {
+                const chestGeo = new THREE.SphereGeometry(0.15, 32, 16);
+                const leftBreast = new THREE.Mesh(chestGeo, material.clone());
+                leftBreast.position.set(-0.12, 0.9, 0.15);
+                leftBreast.scale.set(1, 0.8, 1);
+                leftBreast.name = "Breast";
+                humanModel.add(leftBreast);
+                bodyParts.push(leftBreast);
+
+                const rightBreast = new THREE.Mesh(chestGeo, material.clone());
+                rightBreast.position.set(0.12, 0.9, 0.15);
+                rightBreast.scale.set(1, 0.8, 1);
+                rightBreast.name = "Breast";
+                humanModel.add(rightBreast);
+                bodyParts.push(rightBreast);
+            }
+
+            // Head & Neck
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 1.35;
+            humanModel.add(headGroup);
+
+            const headGeo = new THREE.SphereGeometry(0.2, 32, 32);
+            const head = new THREE.Mesh(headGeo, material.clone());
+            head.name = "Head";
+            headGroup.add(head);
+            bodyParts.push(head);
+
+            const earGeo = new THREE.SphereGeometry(0.05, 16, 8);
+            const leftEar = new THREE.Mesh(earGeo, material.clone()); leftEar.position.set(-0.2, 0.05, 0); leftEar.scale.set(0.5, 1, 1); leftEar.name = "Ear"; headGroup.add(leftEar); bodyParts.push(leftEar);
+            const rightEar = new THREE.Mesh(earGeo, material.clone()); rightEar.position.set(0.2, 0.05, 0); rightEar.scale.set(0.5, 1, 1); rightEar.name = "Ear"; headGroup.add(rightEar); bodyParts.push(rightEar);
+
+            const eyeGeo = new THREE.SphereGeometry(0.03, 16, 8);
+            const leftEye = new THREE.Mesh(eyeGeo, material.clone()); leftEye.position.set(-0.08, 0.05, 0.18); leftEye.name = "Eye"; headGroup.add(leftEye); bodyParts.push(leftEye);
+            const rightEye = new THREE.Mesh(eyeGeo, material.clone()); rightEye.position.set(0.08, 0.05, 0.18); rightEye.name = "Eye"; headGroup.add(rightEye); bodyParts.push(rightEye);
+            
+            const noseGeo = new THREE.ConeGeometry(0.04, 0.1, 16);
+            const nose = new THREE.Mesh(noseGeo, material.clone()); nose.position.set(0, 0, 0.2); nose.name = "Nose"; headGroup.add(nose); bodyParts.push(nose);
+
+            const mouthGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.02, 16);
+            const mouth = new THREE.Mesh(mouthGeo, material.clone()); mouth.position.set(0, -0.08, 0.18); mouth.rotation.x = Math.PI / 2; mouth.name = "Mouth"; headGroup.add(mouth); bodyParts.push(mouth);
+            
+            const neckGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.15, 32);
+            const neck = new THREE.Mesh(neckGeo, material.clone());
+            neck.position.y = 1.12;
+            neck.name = "Neck";
+            humanModel.add(neck);
+            bodyParts.push(neck);
+
+            // Arms and Hands
+            const leftArmGroup = new THREE.Group(); leftArmGroup.position.set(-0.35, 1.05, 0); humanModel.add(leftArmGroup);
+            const upperArmGeo = new THREE.CapsuleGeometry(limbRadius, 0.4, 4, 16);
+            const lowerArmGeo = new THREE.CapsuleGeometry(limbRadius * 0.8, 0.4, 4, 16);
+            const leftUpperArm = new THREE.Mesh(upperArmGeo, material.clone()); leftUpperArm.position.y = -0.2; leftUpperArm.name = "Upper Arm"; leftArmGroup.add(leftUpperArm); bodyParts.push(leftUpperArm);
+            const leftLowerArm = new THREE.Mesh(lowerArmGeo, material.clone()); leftLowerArm.position.y = -0.65; leftLowerArm.name = "Lower Arm"; leftArmGroup.add(leftLowerArm); bodyParts.push(leftLowerArm);
+            const leftHand = createHand(material, bodyParts); leftHand.position.y = -0.95; leftArmGroup.add(leftHand);
+
+            const rightArmGroup = new THREE.Group(); rightArmGroup.position.set(0.35, 1.05, 0); humanModel.add(rightArmGroup);
+            const rightUpperArm = new THREE.Mesh(upperArmGeo, material.clone()); rightUpperArm.position.y = -0.2; rightUpperArm.name = "Upper Arm"; rightArmGroup.add(rightUpperArm); bodyParts.push(rightUpperArm);
+            const rightLowerArm = new THREE.Mesh(lowerArmGeo, material.clone()); rightLowerArm.position.y = -0.65; rightLowerArm.name = "Lower Arm"; rightArmGroup.add(rightLowerArm); bodyParts.push(rightLowerArm);
+            const rightHand = createHand(material, bodyParts); rightHand.position.y = -0.95; rightArmGroup.add(rightHand);
+
+            // Legs and Feet
+            const leftLegGroup = new THREE.Group(); leftLegGroup.position.set(-0.15, 0.4, 0); humanModel.add(leftLegGroup);
+            const upperLegGeo = new THREE.CapsuleGeometry(limbRadius * 1.2, 0.5, 4, 16);
+            const lowerLegGeo = new THREE.CapsuleGeometry(limbRadius, 0.4, 4, 16);
+            const leftUpperLeg = new THREE.Mesh(upperLegGeo, material.clone()); leftUpperLeg.position.y = -0.25; leftUpperLeg.name = "Upper Leg"; leftLegGroup.add(leftUpperLeg); bodyParts.push(leftUpperLeg);
+            // *** FIX WAS HERE ***
+            const leftLowerLeg = new THREE.Mesh(lowerLegGeo, material.clone()); leftLowerLeg.position.y = -0.7; leftLowerLeg.name = "Lower Leg"; leftLegGroup.add(leftLowerLeg); bodyParts.push(leftLowerLeg);
+            const leftFoot = createFoot(material, bodyParts); leftFoot.position.y = -0.95; leftLegGroup.add(leftFoot);
+
+            const rightLegGroup = new THREE.Group(); rightLegGroup.position.set(0.15, 0.4, 0); humanModel.add(rightLegGroup);
+            const rightUpperLeg = new THREE.Mesh(upperLegGeo, material.clone()); rightUpperLeg.position.y = -0.25; rightUpperLeg.name = "Upper Leg"; rightLegGroup.add(rightUpperLeg); bodyParts.push(rightUpperLeg);
+            const rightLowerLeg = new THREE.Mesh(lowerLegGeo, material.clone()); rightLowerLeg.position.y = -0.7; rightLowerLeg.name = "Lower Leg"; rightLegGroup.add(rightLowerLeg); bodyParts.push(rightLowerLeg);
+            const rightFoot = createFoot(material, bodyParts); rightFoot.position.y = -0.95; rightLegGroup.add(rightFoot);
+
+            scene.add(humanModel);
+            populateAnatomyList();
+            console.log(`Procedural ${gender} model created successfully.`);
+        }
+
+        function createHand(material, bodyParts) {
+            const handGroup = new THREE.Group();
+            
+            const palmGeo = new THREE.BoxGeometry(0.1, 0.12, 0.04);
+            const palm = new THREE.Mesh(palmGeo, material.clone());
+            palm.name = "Hand";
+            handGroup.add(palm);
+            bodyParts.push(palm);
+            
+            const fingerGeo = new THREE.CapsuleGeometry(0.015, 0.08, 4, 8);
+            for (let i = 0; i < 5; i++) {
+                const finger = new THREE.Mesh(fingerGeo, material.clone());
+                finger.position.set(-0.04 + i * 0.02, -0.08, 0);
+                finger.name = "Finger";
+                handGroup.add(finger);
+                bodyParts.push(finger);
+            }
+            return handGroup;
+        }
+
+        function createFoot(material, bodyParts) {
+            const footGroup = new THREE.Group();
+            
+            const footBaseGeo = new THREE.BoxGeometry(0.15, 0.08, 0.25);
+            const footBase = new THREE.Mesh(footBaseGeo, material.clone());
+            footBase.position.z = 0.05;
+            footBase.name = "Foot";
+            footGroup.add(footBase);
+            bodyParts.push(footBase);
+
+            const toeGeo = new THREE.CapsuleGeometry(0.015, 0.04, 4, 8);
+            for (let i = 0; i < 5; i++) {
+                const toe = new THREE.Mesh(toeGeo, material.clone());
+                toe.position.set(-0.06 + i * 0.03, 0, 0.15);
+                toe.name = "Toe";
+                footGroup.add(toe);
+                bodyParts.push(toe);
+            }
+            return footGroup;
+        }
+        
+        function createParticles() {
+            const particleCount = 3000;
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            const particleColors = [
+                new THREE.Color(0x3B82F6), new THREE.Color(0x22C55E), new THREE.Color(0x8B5CF6),
+                new THREE.Color(0xEF4444), new THREE.Color(0x000000), new THREE.Color(0xffffff)
+            ];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 15;
+                positions[i * 3 + 1] = Math.random() * 8;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 15;
+                
+                velocities[i * 3] = (Math.random() - 0.5) * 0.002;
+                velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.002;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.002;
+
+                const color = particleColors[Math.floor(Math.random() * particleColors.length)];
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleTexture = new THREE.CanvasTexture(createParticleCanvas());
+
+            const material = new THREE.PointsMaterial({
+                size: 0.08, map: particleTexture, vertexColors: true,
+                transparent: true, blending: THREE.AdditiveBlending,
+                sizeAttenuation: true, depthWrite: false
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        function createParticleCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.7, 'rgba(255,255,255,0.5)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            return canvas;
+        }
+        
+        function populateAnatomyList() {
+            const list = document.getElementById('anatomy-list');
+            list.innerHTML = '';
+            const uniquePartNames = [...new Set(bodyParts.map(part => part.name))];
+            
+            uniquePartNames.sort().forEach(name => {
+                if (!name) return; // Skip parts without a name
+                const li = document.createElement('li');
+                li.textContent = name;
+                li.dataset.partName = name;
+                li.addEventListener('click', () => {
+                    getAIExplanation(name);
+                    highlightPartByName(name, true);
+                });
+                list.appendChild(li);
+            });
+        }
+
+        // --- INTERACTIVITY & AI ---
+        async function getAIExplanation(promptText, isChat = false) {
+            const explanationText = document.getElementById('explanation-text');
+            explanationText.textContent = `Fetching information for: "${promptText}"...`;
+
+            const fullPrompt = isChat 
+                ? `You are a helpful medical encyclopedia for educational purposes. Provide a clear and concise answer to the following question: "${promptText}". Do not provide medical advice. End with a clear disclaimer to consult a medical professional for any health concerns.`
+                : `You are a helpful medical encyclopedia for educational purposes. Provide a clear and concise explanation for the human body part: "${promptText}". Describe its primary functions, its general location, and one or two common health issues associated with it. Do not provide medical advice. End with a clear disclaimer to consult a medical professional for any health concerns.`;
+            
+            try {
+                // Call our secure Netlify function
+                const response = await fetch('/.netlify/functions/getAIExplanation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: fullPrompt }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Netlify function request failed with status ${response.status}`);
+                }
+                 
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                   const text = result.candidates[0].content.parts[0].text;
+                   explanationText.textContent = text.replace(/\*/g, '');
+                } else {
+                    explanationText.textContent = "Could not retrieve an explanation from the AI. Please try again.";
+                }
+            } catch (error) {
+                console.error("Function Call Error:", error);
+                explanationText.textContent = "An error occurred while fetching the AI explanation. Please check the console for details.";
+            }
+        }
+
+        function onMouseMove(event) {
+            const viewerPanel = document.querySelector('.viewer-panel');
+            const rect = viewerPanel.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function onMouseClick(event) {
+            const part = getIntersectedPart();
+            if (part) {
+                getAIExplanation(part.name);
+                highlightPartByName(part.name, true);
+            }
+        }
+        
+        function getIntersectedPart() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(humanModel.children, true);
+            if (intersects.length > 0) {
+                let object = intersects[0].object;
+                while (object) {
+                    if (bodyParts.includes(object)) {
+                        return object;
+                    }
+                    object = object.parent;
+                }
+            }
+            return null;
+        }
+        
+        function highlightPartByName(name, temporary = false) {
+            bodyParts.forEach(part => {
+                if (part.name === name) {
+                    const originalEmissive = part.material.emissive.getHex();
+                    part.layers.enable(GLOW_LAYER);
+                    
+                    if (temporary) {
+                        setTimeout(() => {
+                           part.layers.disable(GLOW_LAYER);
+                        }, 1500);
+                    }
+                }
+            });
+        }
+
+        function checkIntersections() {
+            const part = getIntersectedPart();
+            
+            if (INTERSECTED && INTERSECTED !== part) {
+                INTERSECTED.layers.disable(GLOW_LAYER);
+            }
+
+            if (part) {
+                if (INTERSECTED !== part) {
+                    INTERSECTED = part;
+                    INTERSECTED.layers.enable(GLOW_LAYER);
+                    document.getElementById('explanation-text').textContent = `Hovering over: ${INTERSECTED.name}`;
+                }
+            } else {
+                 if (INTERSECTED) {
+                    INTERSECTED.layers.disable(GLOW_LAYER);
+                }
+                INTERSECTED = null;
+            }
+        }
+        
+        document.getElementById('skin-tone-picker').addEventListener('click', (event) => {
+            if (event.target.classList.contains('color-swatch')) {
+                const color = parseInt(event.target.dataset.color);
+                humanModel.traverse(child => {
+                    if (child.isMesh) {
+                        child.material.color.setHex(color);
+                    }
+                });
+            }
+        });
+        
+        document.getElementById('gender-picker').addEventListener('click', (event) => {
+            if (event.target.classList.contains('gender-button')) {
+                const gender = event.target.dataset.gender;
+                document.body.className = `${gender}-theme`;
+                document.querySelectorAll('.gender-button').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                createHumanModel(gender);
+            }
+        });
+        
+        document.getElementById('chat-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const input = document.getElementById('chat-input');
+            const query = input.value.trim();
+            if (query) {
+                getAIExplanation(query, true);
+                input.value = '';
+            }
+        });
+        
+        const aboutModal = document.getElementById('about-modal');
+        document.getElementById('about-button').addEventListener('click', () => aboutModal.classList.add('visible'));
+        document.getElementById('close-about-modal').addEventListener('click', () => aboutModal.classList.remove('visible'));
+        aboutModal.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.classList.remove('visible'); });
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (humanModel && !isMouseOverCanvas) {
+                humanModel.rotation.y += 0.005; // Auto-rotate
+            }
+            
+            if(particles) {
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.geometry.attributes.velocity.array;
+                const spread = 15;
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i];
+                    positions[i + 1] += velocities[i + 1];
+                    positions[i + 2] += velocities[i + 2];
+
+                    if (positions[i + 1] < -spread/2 || positions[i+1] > spread/2) velocities[i+1] *= -1;
+                    if (positions[i] < -spread || positions[i] > spread) velocities[i] *= -1;
+                    if (positions[i + 2] < -spread || positions[i+2] > spread) velocities[i+2] *= -1;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            controls.update();
+            checkIntersections();
+            
+            // 1. Render bloom pass to a texture
+            scene.traverse(obj => {
+                if (obj.isMesh && !obj.layers.test(camera.layers)) {
+                    materials[obj.uuid] = obj.material;
+                    obj.material = darkMaterial;
+                }
+            });
+            camera.layers.set(GLOW_LAYER);
+            bloomComposer.render();
+            
+            // 2. Restore materials and render final scene
+            scene.traverse(obj => {
+                if (materials[obj.uuid]) {
+                    obj.material = materials[obj.uuid];
+                    delete materials[obj.uuid];
+                }
+            });
+            camera.layers.set(DEFAULT_LAYER);
+            finalComposer.render();
+        }
+
+        // --- RESIZE HANDLER ---
+        function onWindowResize() {
+            const viewerPanel = document.querySelector('.viewer-panel');
+            const width = viewerPanel.clientWidth;
+            const height = viewerPanel.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            
+            renderer.setSize(width, height);
+            bloomComposer.setSize(width, height);
+            finalComposer.setSize(width, height);
+        }
+
+        // --- MAIN EXECUTION ---
+        init();
+
+    </script>
+
+    <!-- Shader scripts for post-processing -->
+    <script id="vertexshader" type="x-shader/x-vertex">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+        }
+    </script>
+    <script id="fragmentshader" type="x-shader/x-fragment">
+        uniform sampler2D baseTexture;
+        uniform sampler2D bloomTexture;
+        varying vec2 vUv;
+        void main() {
+            gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
+        }
+    </script>
+</body>
+</html>
